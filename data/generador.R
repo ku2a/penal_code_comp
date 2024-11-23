@@ -1,45 +1,30 @@
-get_articles_obj = function(){
+source("./data/processor.R")
+get_html_arts = function(){
   url = "https://www.conceptosjuridicos.com/codigo-penal"
-  lines = readLines(url)
-  texto = lines[33]
-  matches <- regmatches(texto, gregexpr("<a\\s+href=\"[^\"]*\">Art[^<]*<\\/a>", texto))
-  matches = matches[[1]]
-  return(matches)
-}
-
-writeIndex = function(){
-  file1 = file(
-    description = "./data/articulos/indices.txt",
-    blocking = TRUE,
-    encoding = "UTF-8",
-    open = "w"
-  )
-  matches = get_articles_obj()
-  for (line in matches){
-    art = regmatches(line, regexpr("Art[^<]*", line,perl = TRUE))
-    sust = gsub(" ","_",art)
-    sust = gsub("í","i",sust)
-    file_path = paste("./data/articulos/",sust,".txt",sep="")
-    writeLines(file_path,file1)
-  }
-  close(file1)
+  articulos = get_articles()
+  links = sapply(articulos, function(x){
+    y = tolower(gsub(" ","-",x))
+    link = paste(url,y,sep = "-")
+    link = paste(link,"/",sep="")
+    })
+  return(links)
 }
 
 writeAll= function(){
-  matches = get_articles_obj()
-  for (line in matches){
-    link = gsub("\"","",regmatches(line, regexpr("\"[^\"]*\"", line,perl = TRUE)))
-    articulo= readLines(link)
-    art = regmatches(line, regexpr("Art[^<]*", line,perl = TRUE))
-    sust = gsub(" ","_",art)
-    sust = gsub("í","i",sust)
-    print(sust)
-    file_path = paste("./data/articulos/",sust,".txt",sep="")
+  articulos = get_articles()
+  links = get_html_arts()
+  for (i in 1:length(articulos)){
+    contenido= readLines(links[i])
+    art = gsub(" ","_",contenido[i])
+  
+    
+    file_path = paste("./data/articulos/",art,".txt",sep="")
     fil3 = file(
       description = file_path,
       encoding = "UTF-8",
       blocking = TRUE,
       open = "w"
+      
     )
     writeLines(articulo,fil3)
     close(fil3)
