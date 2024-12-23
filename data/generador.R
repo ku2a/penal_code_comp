@@ -1,5 +1,6 @@
 source("./data/processor.R")
 get_html_arts = function(){
+  #Devuelve los links de los artículos
   url = "https://www.conceptosjuridicos.com/codigo-penal"
   articulos = get_articles()
   links = sapply(articulos, function(x){
@@ -11,6 +12,7 @@ get_html_arts = function(){
 }
 
 writeAll= function(){
+  #Escribe el contenido en html de cada uno de los artículos a la carpeta data
   articulos = get_articles()
   links = get_html_arts()
   for (i in 1:length(articulos)){
