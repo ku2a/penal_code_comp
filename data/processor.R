@@ -61,6 +61,7 @@ get_titles = function(){
 
 separator = function(){
   #separa el df con los headers: Libro I: | De las garantías...
+  df = get_titles()
   df2 = lapply(df, function(x){
     sapply(x, function(y){
       if (!is.na(y) && !grepl("Art",y)){
@@ -85,7 +86,7 @@ separator = function(){
   })
   df3 = as.data.frame(df3)
   
-  df = get_titles()
+  
   df_names = c()
   df_start = c()
   for (row in 1:nrow(df)){

@@ -1,2 +1,4 @@
 quanteda
 stringr
+spacyr
+udpipe

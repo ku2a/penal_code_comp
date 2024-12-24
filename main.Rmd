@@ -1,0 +1,153 @@
+---
+title: "Práctica 9 PLN"
+output: pdf_document
+authors: "Pablo de Tarso, Jorge López, Martín ... y Pablo Suárez"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Parte 1: Creación del corpus
+
+Se va a hacer scraping de la siguiente página: : https://www.conceptosjuridicos.com/codigo-penal/, la cual contiene artículos del código penal. Primero importamos las funciones creadas en los demás archivos 
+
+```{r}
+source("./data/generador.R")
+source("./data/check_data.R")
+source("./data/processor.R")
+source("./install_requirements.R")
+```
+
+Con la siguiente función conseguimos el contenido de lso artículos (Aun no tienen las cabeceras)
+
+```{r results='hide'}
+start_install()
+library(quanteda)
+
+```
+
+```{r pressure}
+articulos = unlist(get_content())
+substr(head(articulos),1,80)
+
+```
+
+Despues usamos nuestro separador, que devuelve los nombres, docvars y cabeceras
+
+```{r}
+#Devuelve lso docvars, names y las cabeceras
+utils = separator()
+corpus_names = utils$names
+corpus_starts = utils$starts
+corpus_docvars = utils$docvars
+head(corpus_names)
+head(corpus_starts)
+head(corpus_docvars)
+```
+Nótese que en los docvars habrá NA's pues no todos los artículos tiene Libro/Título/Capítulo/Sección. Por ejemplo los primeros no están incluídos dentro de ningún libro.
+Después unimos las cabeceras con el resto del contenido de los artículos. 
+
+```{r}
+for ( i in 1:length(articulos)){
+  articulos[[i]] = paste(corpus_starts[[i]],articulos[[i]],sep = "\n")
+}
+
+```
+
+Y ya tenemos todo
+
+```{r}
+corpus = corpus(articulos)
+docvars(corpus) = corpus_docvars
+names(corpus) = corpus_names
+head(corpus)
+```
+
+## Parte 2: Distancias 
+
+Primero creamos la matriz de distancias entre los textos.
+
+```{r}
+dtm = dfm(tokens(corpus))
+m <- as.matrix(dtm)
+distMatrix <- dist(m, method = "euclidean")
+```
+
+Después agrupamos los textos usando las distancias para hacer el dendrograma
+
+```{r}
+
+groups <- hclust(distMatrix)
+
+plot(groups, cex = 0.9, hang = -1, 
+     labels=FALSE,
+     main = "Dendrograma Código Penal",
+     xlab = "Artículos",
+) #labels = FALSE para que no aparezcan los nombres, sino no se aprecia nada 
+
+```
+
+Para buscar los dos artículos más parecidos buscamos la menor distancia. Primero tenemos que transformar distMatrix en una matriz, pues de normal se devuelve en forma de tipo "dist", que contiene, entre otras cosas, el vector de distancias. Sin embargo, es más cómodo en forma de matriz. Despues cambiamos la diagonal de esta matriz a infinito, pues la diagonal representa la distancia de cada texto a sí mismo y este será 0 siempre.
+
+```{r}
+
+
+distMatrix_full <- as.matrix(distMatrix)
+
+diag(distMatrix_full) <- Inf
+
+min_index <- which(distMatrix_full == min(distMatrix_full), arr.ind = TRUE)
+i <- min_index[1, 1]
+j <- min_index[1, 2]
+cat(i,j)
+```
+
+Así, los dos textos más parecidos son:
+
+```{r, results='markup'}
+cat(corpus[[i]])
+cat(corpus[[j]])
+
+```
+
+## Parte 3: Entidades nombradas
+
+Importamos primero las librerias necesarias y cargamos los modelos 
+
+```{r}
+library(spacyr)
+library(udpipe)
+
+spacy_initialize(model = "es_core_news_sm")
+ud_model <- udpipe_download_model(language = "spanish-ancora")
+udmodel_es <- udpipe_load_model(file = ud_model$file_model)
+
+
+```
+
+Buscamos la entidades nombradas con scapyr:
+
+```{r}
+
+ent = spacy_extract_entity(corpus)
+head(ent)
+```
+
+Y con udpipe:
+
+```{r}
+annotations <- udpipe_annotate(udmodel_es, x = corpus)
+annotations_df <- as.data.frame(annotations)
+
+```
+
+
+```{r}
+keywords <- keywords_rake(
+  annotations_df,    
+  term = "lemma",        
+  group = "doc_id"
+)
+```
+
