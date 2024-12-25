@@ -2,6 +2,7 @@ source("./data/generador.R")
 source("./data/check_data.R")
 source("./data/processor.R")
 source("./install_requirements.R")
+#writeAll() solo si necesita descargar de nuevo los archivos
 
 start_install()
 library(quanteda)

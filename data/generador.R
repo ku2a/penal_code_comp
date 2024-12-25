@@ -12,7 +12,7 @@ get_html_arts = function(){
 }
 
 writeAll= function(){
-  #Escribe el contenido en html de cada uno de los artículos a la carpeta data
+  #Escribe el contenido en html de cada uno de los artículos a la carpeta articulos
   articulos = get_articles()
   links = get_html_arts()
   for (i in 1:length(articulos)){
