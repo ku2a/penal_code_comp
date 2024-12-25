@@ -57,22 +57,34 @@ library(spacyr)
 library(udpipe)
 
 spacy_initialize(model = "es_core_news_sm")
-ud_model <- udpipe_download_model(language = "spanish-ancora")
+#ud_model <- udpipe_download_model(language = "spanish-ancora")
 udmodel_es <- udpipe_load_model(file = 'spanish-ancora-ud-2.5-191206.udpipe')
 
 annotations <- udpipe_annotate(udmodel_es, x = corpus)
 
-# Convert the annotations into a data frame
+ent = spacy_extract_entity(corpus)
+freqs = table(ent$text)
+comunes = freqs[order(-freqs)][1:20]
+comunes
+
+
 annotations_df <- as.data.frame(annotations)
 
-# View the processed annotations
+
 head(annotations_df)
+
 keywords <- keywords_rake(
-  x = annotations_df,    # Pass the processed annotations dataframe
-  term = "lemma",        # Use lemmatized terms for keyword extraction
-  group = "doc_id"
+  annotations_df,    
+  term = "lemma",        
+  group = "doc_id",
+  relevant = ( ! annotations_df$xpos  %in% c("PUNCT","SYM","NUM","CCONJ","ADP")),
+  ngram_max = 5,
 )
-ent = spacy_extract_entity(corpus)
+
+keywords = keywords[order(-keywords$freq),]  #Ordenamos for frecuencia
+
+head(keywords,20)
+
 
 
 

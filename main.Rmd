@@ -1,7 +1,7 @@
 ---
 title: "Práctica 9 PLN"
 output: pdf_document
-authors: "Pablo de Tarso, Jorge López, Martín ... y Pablo Suárez"
+authors: "Pablo de Tarso, Jorge López, Martín Hernández y Pablo Suárez"
 ---
 
 ```{r setup, include=FALSE}
@@ -19,13 +19,14 @@ source("./data/processor.R")
 source("./install_requirements.R")
 ```
 
-Con la siguiente función conseguimos el contenido de lso artículos (Aun no tienen las cabeceras)
-
+Instalamos las dependecias
 ```{r results='hide'}
 start_install()
 library(quanteda)
 
 ```
+
+Con la siguiente función conseguimos el contenido de los artículos (Aun no tienen las cabeceras)
 
 ```{r pressure}
 articulos = unlist(get_content())
@@ -36,7 +37,8 @@ substr(head(articulos),1,80)
 Despues usamos nuestro separador, que devuelve los nombres, docvars y cabeceras
 
 ```{r}
-#Devuelve lso docvars, names y las cabeceras
+
+
 utils = separator()
 corpus_names = utils$names
 corpus_starts = utils$starts
@@ -62,6 +64,7 @@ corpus = corpus(articulos)
 docvars(corpus) = corpus_docvars
 names(corpus) = corpus_names
 head(corpus)
+cat(corpus[[1]])
 ```
 
 ## Parte 2: Distancias 
@@ -87,6 +90,7 @@ plot(groups, cex = 0.9, hang = -1,
 ) #labels = FALSE para que no aparezcan los nombres, sino no se aprecia nada 
 
 ```
+Por la cantidad de datos en el corpus es casi imposible apreciar nada, mucho menos sin tener los nombres. Sin embargo, si mostramos los nombres la pantalla se tapa con ellos al completo.
 
 Para buscar los dos artículos más parecidos buscamos la menor distancia. Primero tenemos que transformar distMatrix en una matriz, pues de normal se devuelve en forma de tipo "dist", que contiene, entre otras cosas, el vector de distancias. Sin embargo, es más cómodo en forma de matriz. Despues cambiamos la diagonal de esta matriz a infinito, pues la diagonal representa la distancia de cada texto a sí mismo y este será 0 siempre.
 
@@ -106,10 +110,14 @@ cat(i,j)
 Así, los dos textos más parecidos son:
 
 ```{r, results='markup'}
-cat(corpus[[i]])
-cat(corpus[[j]])
+text_1 <- strwrap(corpus[[i]], width = 80)
+text_2 <- strwrap(corpus[[2]], width = 80)
+cat(paste(text_1, collapse = "\n"))
+cat(paste(text_2, collapse = "\n"))
 
 ```
+Nótese que se ha hecho un wrap pues sino los textos se salen del pdf, por lo que no se estan consevando los saltos de línea.
+
 
 ## Parte 3: Entidades nombradas
 
@@ -120,8 +128,8 @@ library(spacyr)
 library(udpipe)
 
 spacy_initialize(model = "es_core_news_sm")
-ud_model <- udpipe_download_model(language = "spanish-ancora")
-udmodel_es <- udpipe_load_model(file = ud_model$file_model)
+#ud_model <- udpipe_download_model(language = "spanish-ancora")
+udmodel_es <- udpipe_load_model(file = 'spanish-ancora-ud-2.5-191206.udpipe')
 
 
 ```
@@ -133,21 +141,92 @@ Buscamos la entidades nombradas con scapyr:
 ent = spacy_extract_entity(corpus)
 head(ent)
 ```
+Ahora veamos las más comunes
 
-Y con udpipe:
+```{r}
+freqs = table(ent$text)
+comunes = freqs[order(-freqs)][1:20]
+comunes
+
+```
+Podemos ver que las palabras que han salido casi todas pertenecen a las cabeceras de los artículos, como era de esperar. Además de otras palabras comunes en textos legales, como delito, código...
+
+Ahora hagámoslo con Udpipe:
+Primero anotamos 
 
 ```{r}
 annotations <- udpipe_annotate(udmodel_es, x = corpus)
 annotations_df <- as.data.frame(annotations)
-
+head(annotations_df[,5:10])
 ```
 
+Y usamos keywords_rake
+```{r}
+keywords <- keywords_rake(
+  annotations_df,    
+  term = "lemma",        #Usamos la columna "lemma" de la anotaciones
+  group = "doc_id"       #Agrupaciones segun doc_id
+)
+head(keywords)
+```
+
+Parece que no esta detectando nada. Esto puede ocurrir por frecuencia de elementos como puntuación
+
+```{r}
+keywords <- keywords_rake(
+  annotations_df,    
+  term = "lemma",        #Usamos la columna "lemma" de la anotaciones
+  group = "doc_id",       #Agrupaciones segun doc_id
+  relevant = (annotations_df$xpos != "PUNCT")  #Nos permite seleccionar cuales filas son relevantes 
+  )
+
+keywords = keywords[order(-keywords$freq),]   #Ordenamos nuestro dataframe en 
+#orden descendente según la frecuencia 
+head(keywords)
+```
+
+Vemos que muchas letras sueltas y números que no nos interesan demasiado. Veamos como arreglar esto 
+
+```{r}
+table(annotations_df$xpos)
+```
+
+Algunos de estos no nos interesan: Por ejemplo:
+```{r}
+head(annotations_df[which(annotations_df$upos=="SYM"),6])
+head(annotations_df[which(annotations_df$upos=="NUM"),6])
+```
+
+Entonces los quitaremos con el parametro relevant de keywords_rake (permite decir que filas no son relevantes). También podemos modificar ngram_max, que cambia la máxima cantidad de palabras que puede tener en cuenta como una entidad (por defecto es solo 2)
 
 ```{r}
 keywords <- keywords_rake(
   annotations_df,    
   term = "lemma",        
-  group = "doc_id"
+  group = "doc_id",
+  relevant = ( ! annotations_df$xpos  %in% c("PUNCT","SYM","NUM")),
+  ngram_max = 5,
 )
+
+keywords = keywords[order(-keywords$freq),]  #Ordenamos for frecuencia
+
+head(keywords,20)
 ```
 
+Siguen saliendo muchas palabras que no nos interesan "a", "y", "el que". Para ello quitaremos otras categorías como las conjunciones y los determinantes. Así se concentrará más en los sustantivos y adjetivos
+
+```{r}
+keywords <- keywords_rake(
+  annotations_df,    
+  term = "lemma",        
+  group = "doc_id",
+  relevant = ( ! annotations_df$xpos  %in% c("PUNCT","SYM","NUM","CCONJ","ADP")),
+  ngram_max = 5,
+)
+
+keywords = keywords[order(-keywords$freq),]  #Ordenamos for frecuencia
+
+head(keywords,20)
+```
+Ahora parece representar algo mejor los textos.
+Podemos ver que coincide en algunas con las calculadas con spacyr, "delitos", "año", "juez".
