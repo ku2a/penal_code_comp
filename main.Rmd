@@ -1,7 +1,7 @@
 ---
 title: "Práctica 9 PLN"
 output: pdf_document
-authors: "Pablo de Tarso, Jorge López, Martín Hernández y Pablo Suárez"
+author: "Pablo de Tarso Pedraz, Jorge López, Martín Hernández y Pablo Suárez"
 ---
 
 ```{r setup, include=FALSE}
@@ -14,7 +14,6 @@ Se va a hacer scraping de la siguiente página: : https://www.conceptosjuridicos
 
 ```{r}
 source("./data/generador.R")
-source("./data/check_data.R")
 source("./data/processor.R")
 source("./install_requirements.R")
 
@@ -233,3 +232,22 @@ head(keywords,20)
 ```
 Ahora parece representar algo mejor los textos.
 Podemos ver que coincide en algunas con las calculadas con spacyr, "delitos", "año", "juez".
+
+
+## Otros:
+
+Se han creado varias funciones auxiliares para dividir en bloques la tarea de hacer scraping y formatear los datos, de esta manera es más fácil de buscar errores y organizar el código. El resto de los archivos son:
+
+- **Schema.txt**: contiene un esquema de las cabeceras de los artículos. Esto fue obtenido de antemano usando XPATH
+
+- **generador.R**:
+    - get_html_arts: devuelve los links de los artículos que nos interesan
+    - writeAll: escribe en la carpeta artículos el contenido (en html) de los artículos
+    
+- **processor.R**:
+    - get_articles: devuelve los nombres de los artículos que nos interesan en el formato deseado (Articulo 10)
+    - get_content: recibe el contenido html de un artículo y devuelve el contenido real del artículo del código penal
+    - get_titles: itera sobre schema.txt y crea un dataframe que incluye cada artículo con sus cabeceras (Libro, Título, Capítulo, Sección)
+    - separator: utiliza el dataframe dado por get_titles y lo separa en 3 elementos: 1. un dataframe `<<docvars>>` que contiene el mismo dataframe anterior pero quitando el inicio de las cabeceras, es decir, pasa de `<<LIBRO I: de las disposiciones...>>` a `<<de las disposiciones...>>`, 2. un vector `<<names>>`, que contiene el nombre de cada artículo con el fomato `<<LIBRO I.Título II.Capítulo I.Artículo III.>>` (Por ejemplo) y 3. un vector `<<starts>>` que contiene los inicios de los artículos, que es solamente la concatenación, con  `"\n"` como separador, de las cabeceras al completo de cada artículo
+    
+En un principio el código se ejecuta en local, pues processor.R lee de la carpeta artículos, las funciones del archivo generador no estan activas en el Rmd. Puede reescribir los artículos descomentando la primera función al principio #writeAll(). Lo mismo con el modelo de udpipe, de da ya descargado per se puede reinstalar descomentando la línea 134.
