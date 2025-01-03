@@ -1,5 +1,5 @@
 ---
-title: "Práctica 9 PLN"
+title: "Práctica PLN: Grupo 9"
 output: pdf_document
 author: "Pablo de Tarso Pedraz, Jorge López, Martín Hernández y Pablo Suárez"
 ---
@@ -32,23 +32,42 @@ Con la siguiente función conseguimos el contenido de los artículos (Aun no tie
 
 ```{r pressure}
 articulos = unlist(get_content())
-substr(head(articulos),1,80)
+substr(head(articulos,5),1,80)
 
 ```
 
 Despues usamos nuestro separador, que devuelve los nombres, docvars y cabeceras
 
 ```{r}
-
-
 utils = separator()
 corpus_names = utils$names
 corpus_starts = utils$starts
 corpus_docvars = utils$docvars
-head(corpus_names)
-head(corpus_starts)
-head(corpus_docvars)
 ```
+
+Corpus names:
+```{r echo=FALSE}
+head(corpus_names,5)
+cat("...")
+tail(corpus_names,5)
+```
+
+Corpus_starts:
+```{r echo=FALSE}
+head(corpus_starts,5)
+cat("...")
+tail(corpus_starts,5)
+```
+
+Corpus_docvars:
+```{r echo=FALSE}
+head(corpus_docvars,5)
+cat("...")
+tail(corpus_docvars,5)
+```
+
+
+
 Nótese que en los docvars habrá NA's pues no todos los artículos tiene Libro/Título/Capítulo/Sección. Por ejemplo los primeros no están incluídos dentro de ningún libro.
 Después unimos las cabeceras con el resto del contenido de los artículos. 
 
@@ -65,9 +84,17 @@ Y ya tenemos todo
 corpus = corpus(articulos)
 docvars(corpus) = corpus_docvars
 names(corpus) = corpus_names
+
+```
+```{r echo=FALSE}
 head(corpus)
+cat("...")
+tail(corpus)
+```
+```{r}
 cat(corpus[[1]])
 ```
+
 
 ## Parte 2: Distancias 
 
@@ -141,16 +168,26 @@ Buscamos la entidades nombradas con scapyr:
 ```{r}
 
 ent = spacy_extract_entity(corpus)
+
+```
+```{r echo=FALSE}
 head(ent)
+cat("...")
+tail(ent)
 ```
 Ahora veamos las más comunes
 
 ```{r}
 freqs = table(ent$text)
 comunes = freqs[order(-freqs)][1:20]
-comunes
 
 ```
+```{r echo=FALSE}
+head(comunes,20)
+
+```
+
+
 Podemos ver que las palabras que han salido casi todas pertenecen a las cabeceras de los artículos, como era de esperar. Además de otras palabras comunes en textos legales, como delito, código...
 
 Ahora hagámoslo con Udpipe:
@@ -159,8 +196,13 @@ Primero anotamos
 ```{r}
 annotations <- udpipe_annotate(udmodel_es, x = corpus)
 annotations_df <- as.data.frame(annotations)
-head(annotations_df[,5:10])
+
 ```
+
+```{r echo=FALSE}
+head(annotations_df[,5:10], 5)
+```
+
 
 Y usamos keywords_rake
 ```{r}
@@ -169,8 +211,12 @@ keywords <- keywords_rake(
   term = "lemma",        #Usamos la columna "lemma" de la anotaciones
   group = "doc_id"       #Agrupaciones segun doc_id
 )
+
+```
+```{r echo=FALSE}
 head(keywords)
 ```
+
 
 Parece que no esta detectando nada. Esto puede ocurrir por frecuencia de elementos como puntuación
 
@@ -184,7 +230,13 @@ keywords <- keywords_rake(
 
 keywords = keywords[order(-keywords$freq),]   #Ordenamos nuestro dataframe en 
 #orden descendente según la frecuencia 
-head(keywords)
+
+```
+
+```{r echo=FALSE}
+head(keywords,5)
+cat("...")
+tail(keywords,5)
 ```
 
 Vemos que muchas letras sueltas y números que no nos interesan demasiado. Veamos como arreglar esto 
@@ -195,8 +247,8 @@ table(annotations_df$xpos)
 
 Algunos de estos no nos interesan: Por ejemplo:
 ```{r}
-head(annotations_df[which(annotations_df$upos=="SYM"),6])
-head(annotations_df[which(annotations_df$upos=="NUM"),6])
+head(annotations_df[which(annotations_df$upos=="SYM"),5])
+head(annotations_df[which(annotations_df$upos=="NUM"),5])
 ```
 
 Entonces los quitaremos con el parametro relevant de keywords_rake (permite decir que filas no son relevantes). También podemos modificar ngram_max, que cambia la máxima cantidad de palabras que puede tener en cuenta como una entidad (por defecto es solo 2)
@@ -212,8 +264,14 @@ keywords <- keywords_rake(
 
 keywords = keywords[order(-keywords$freq),]  #Ordenamos for frecuencia
 
-head(keywords,20)
 ```
+
+```{r echo=FALSE}
+head(keywords,10)
+cat("...")
+tail(keywords,5)
+```
+
 
 Siguen saliendo muchas palabras que no nos interesan "a", "y", "el que". Para ello quitaremos otras categorías como las conjunciones y los determinantes. Así se concentrará más en los sustantivos y adjetivos
 
@@ -228,8 +286,14 @@ keywords <- keywords_rake(
 
 keywords = keywords[order(-keywords$freq),]  #Ordenamos for frecuencia
 
-head(keywords,20)
 ```
+
+```{r echo =FALSE}
+head(keywords,15)
+cat("...")
+tail(keywords,5)
+```
+
 Ahora parece representar algo mejor los textos.
 Podemos ver que coincide en algunas con las calculadas con spacyr, "delitos", "año", "juez".
 
@@ -250,4 +314,27 @@ Se han creado varias funciones auxiliares para dividir en bloques la tarea de ha
     - get_titles: itera sobre schema.txt y crea un dataframe que incluye cada artículo con sus cabeceras (Libro, Título, Capítulo, Sección)
     - separator: utiliza el dataframe dado por get_titles y lo separa en 3 elementos: 1. un dataframe `<<docvars>>` que contiene el mismo dataframe anterior pero quitando el inicio de las cabeceras, es decir, pasa de `<<LIBRO I: de las disposiciones...>>` a `<<de las disposiciones...>>`, 2. un vector `<<names>>`, que contiene el nombre de cada artículo con el fomato `<<LIBRO I.Título II.Capítulo I.Artículo III.>>` (Por ejemplo) y 3. un vector `<<starts>>` que contiene los inicios de los artículos, que es solamente la concatenación, con  `"\n"` como separador, de las cabeceras al completo de cada artículo
     
-En un principio el código se ejecuta en local, pues processor.R lee de la carpeta artículos, las funciones del archivo generador no estan activas en el Rmd. Puede reescribir los artículos descomentando la primera función al principio #writeAll(). Lo mismo con el modelo de udpipe, de da ya descargado per se puede reinstalar descomentando la línea 134.
+En un principio el código se ejecuta en local, pues processor.R lee de la carpeta artículos, las funciones del archivo generador no estan activas en el Rmd. Puede reescribir los artículos descomentando la primera función al principio #writeAll(). Lo mismo con el modelo de udpipe, se da ya descargado pero se puede reinstalar descomentando la línea 160.
+
+- **Grupo: 9**
+
+- **Correos:**
+
+  Pablo de Tarso Pedraz: tarso.pedraz@alumnos.upm.es
+  Jorge López: jorge.lopez.diaz@alumnos.upm.es
+  Martín Hernández: martin.hcastano@alumnos.upm.es
+  Pablo Suárez: pablo.suarez@alumnos.upm.es
+  
+- **Obstáculos**
+
+La parte más larga fue con diferencia la primera, la creación del corpus. Una de las complicaciones fue que no todos los artículos que aparecían debían ser scrapeados, por eso optamos por directamente leer un archivo de referencia (archivo_ref.txt) para guiarnos, y eliminiar aquellos suprimidos, frente a nuestra primera opción donde scrapeábamos directamente de la página web sin guía. Otra complicación fue añadir las cabeceras, pues algunos artículos tenían de una pero no de la otra (por ejemplo estar dentro de un capítulo pero no haber secciones), aunque se llegó a una solución óptima y "sencilla". Otros problemas fueron: la falta de formarto (algunas palabras llevaban tilde y otras no, algunas estaban en mayúscula y otros no...) y la existencia de valores en blanco que R no detectaba como espacios.
+
+Además, durante la tercera parte nos hallamos estancados durante un buen tiempo tras intentar usar keywords_rake y tener un resultado vacío. Intentamos eliminiar la puntuación usando sub pero seguía sin funcionar. Leímos repetidamente la guía del comando keywords_rake pero no decía necesitar usar el parametro relevant (predeterminado todo esta a True), por ello debería ser lo mismo usar el corpus sin puntuaciónes que el keywords_rake con el relevant puesto a "todos menos puntuaciones", sin embargo por alguna razón no es así. Nos dimos cuenta de que había que añadirlo al intentar probar con los ejemplos que vienen en la guía del comando. 
+  
+- **Autorías**
+
+Los ejercicios no fueron repartidos desde el principio sino que fueron realizados sobre la marcha por diferentes integrantes. Los encargados de cada parte, con sus relativas autorías fueron:
+
+- Parte 1: Jorge López 0.4 - Pablo Suárez 0.6
+- Parte 2: Pablo de Tarso 0.7 - Jorge López 0.2 - Martín Hernández 0.1
+- Parte 3: Martín Hernández 0.7 - Pablo Suárez 0.3

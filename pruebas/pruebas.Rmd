@@ -1,0 +1,122 @@
+---
+title: "Pruebas"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Se van algunas de las funciones usadas para crear el corpus. Lo obtenido en los apartados 2 y 3 no se va a comprobar pues el resultado es inmediato y no se han usado más funciones auxiliares.
+
+```{r}
+setwd("./..")
+path = getwd()
+generator = paste(path, "/data/generador.R", sep = "")
+processor = paste(path, "/data/processor.R", sep = "")
+source(generator)
+source(processor)
+
+```
+Intentamos usar path relativos ("./../data/generador.R") pero no parecía dejar abrir el archivo (usamos esa misma dirección con el file.exists y devolvió TRUE). 
+
+# get_articles(): 
+
+Debería devolver los títulos de todos los artículos, quitamos los suprimidos y formateando el nombre (quitar la tilde para unificarlos)
+
+```{r}
+setwd("./..")
+articulos = get_articles()
+```
+
+Buscamos la existencia de tildes o paréntesis. Además comprobaremos la cantidad de artículos que ha escogido para comprobar con otras funciones
+
+```{r}
+grep("í",articulos)
+grep("[()]",articulos, perl = TRUE)
+length(articulos)
+```
+
+# get_content().
+
+Debería devolver el contenido de los artículos, purgándolos del html. Comprobaremos que no tengo ninguna etiqueta del formato `<...>`. También que no esté vacío.
+
+```{r}
+setwd("./..")
+contenido = get_content()
+grep("<[^>]*>", contenido) 
+any(contenido=="")
+length(contenido)
+```
+
+Vemos que contiene la misma cantidad de elementos que articulos, que ninguno está vacío y que no contiene ninguna etiqueta html.
+
+# get_titles():
+
+Debería devolver las cabeceras de cada artículo. Podemos comprobar que la columna de Artículo este llena. Del resto de columnas no podemos hacer mucha comprobación pues no siguen un formato concreto (algunos pueden tener, por ejemplo, capítulo y no tener sección o viceversa, lo caul no nos permite hacer una comprobación de que sean correctos)
+
+```{r}
+setwd("./..")
+titles = get_titles()
+any(is.na(titles$Artículo))
+nrow(titles)
+```
+```{r}
+setwd("./..")
+utils = separator()
+corpus_names = utils$names
+corpus_starts = utils$starts
+corpus_docvars = utils$docvars
+```
+
+Primero para corpus names, comprobaremos que no esté vacío y que aparezca el artículo en cada uno:
+
+```{r}
+any(corpus_names=="")
+length(grep("Artículo",corpus_names))
+length(corpus_names)
+```
+
+Lo mismo haremos con corpus_starts.
+
+```{r}
+any(corpus_starts=="")
+length(grep("Artículo",corpus_starts))
+length(corpus_starts)
+```
+
+Al igual que con get_titles no podemos comprobar casi nada exceptuando la existencia de la columna Artículo. Comprobaremos adicionalmente que no haya quedado ningún inicio de las cabeceras (Libro II:, Capítulo IV: ...)
+
+```{r}
+any(corpus_docvars$Artículo=="")
+nrow(corpus_docvars)
+
+grep("(Título|TÍTULO) [IVX]+", corpus_docvars$Título, perl = TRUE)
+grep("(Capítulo) [IVX]+", corpus_docvars$Capítulo, perl = TRUE)
+grep("(Sección) [IVX]+", corpus_docvars$Sección, perl = TRUE)
+grep("(Libro|LIBRO) [IVX]+", corpus_docvars$Libro, perl = TRUE)
+```
+
+# get_html_arts().
+
+Esta función devuelve los links de los 697 artículos a scrapear, para comprobar que son correctos solo usaremos readLines para comprobar que no devuelve error. No hace falta comprobar si alguno devuelve vacío, estos es pues después de escribirlos, la función get_content() los lee, y como ya hemos comprobado que esa función ya devolvía no vacío, se deduce que esta tampoco. Solo nos interesa el elemento 33 de readLines pues es el cque contiene el artículo.
+
+```{r}
+setwd("./..")
+links = get_html_arts()
+length(links)
+contenido = vector("list", 697)
+```
+```{r, warning = FALSE, message=FALSE,results='hide'}
+for (i in 1:length(articulos)){
+  contenido[[i]]= readLines(links[[i]])[33]
+}
+```
+
+Todo se ha ejecutado correctamente, veámos un ejemplo.
+
+```{r}
+substr(contenido[[1]],1,300)
+```
+
