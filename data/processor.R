@@ -14,7 +14,7 @@ get_content = function(x){
   
   url = "./data/articulos/"
   indices = paste(url, gsub(" ","_",get_articles()),".txt",sep="")
-  lines= lapply(indices,function(x){readLines(x)[[33]]})
+  lines= lapply(indices,function(x){readLines(x)})
   lines = lapply(lines,function(x){
     unlist(regmatches(x,gregexec("<blockquote>.*?</blockquote>",x)))
   })
