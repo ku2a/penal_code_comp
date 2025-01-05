@@ -1,8 +1,17 @@
 source("./data/generador.R")
-source("./data/check_data.R")
 source("./data/processor.R")
 source("./install_requirements.R")
-#writeAll() solo si necesita descargar de nuevo los archivos
+
+articulos = get_articles()
+downloaded = list.files("./data/articulos/")
+for ( i in 1:length(articulos)){
+  art = gsub(" ","_",articulos[i])
+  file_name = paste(art,".txt",sep="")
+  if (!(file_name %in%  downloaded)){
+    writeAll()
+    break
+  }
+}
 
 start_install()
 library(quanteda)
